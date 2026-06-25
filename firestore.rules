@@ -1,0 +1,48 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------------------------------------------------------------------------
+    // MULTI-USER DATA ISOLATION
+    //
+    // Every teacher's data is stored under their own user-scoped path:
+    //
+    //   users/{uid}/settings/{docId}
+    //   users/{uid}/students/{docId}
+    //   users/{uid}/absentees/{docId}
+    //   users/{uid}/backups/{docId}
+    //
+    // These rules guarantee a user can only read/write their own subtree.
+    // ---------------------------------------------------------------------------
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // Top-level users/{uid} document (email, role).
+    match /users/{uid} {
+      allow read: if isOwner(uid);
+      allow create: if isOwner(uid);
+      // Email/role may be edited only by the owner.
+      allow update: if isOwner(uid);
+      allow delete: if isOwner(uid);
+
+      // Per-user scoped collections.
+      match /settings/{docId} {
+        allow read, write: if isOwner(uid);
+      }
+      match /students/{docId} {
+        allow read, write: if isOwner(uid);
+      }
+      match /absentees/{docId} {
+        allow read, write: if isOwner(uid);
+      }
+      match /backups/{docId} {
+        allow read, write: if isOwner(uid);
+      }
+    }
+  }
+}
