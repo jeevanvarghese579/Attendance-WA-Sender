@@ -14,16 +14,18 @@ import {
   writeBatch,
 } from 'firebase/firestore'
 import { db } from '../firebase/config'
+import { APP_KEY, userSubcollectionPath } from '../firebase/paths'
 
 // ----------------------------------------------------------------------------
 // Multi-user data isolation:
-//   users/{uid}/settings/{docId}
-//   users/{uid}/students/{docId}
-//   users/{uid}/absentees/{docId}
-//   users/{uid}/backups/{docId}
+//   apps/attendanceWaSender/users/{uid}/settings/{docId}
+//   apps/attendanceWaSender/users/{uid}/students/{docId}
+//   apps/attendanceWaSender/users/{uid}/absentees/{docId}
+//   apps/attendanceWaSender/users/{uid}/backups/{docId}
 // ----------------------------------------------------------------------------
 
-const userScope = (uid, sub) => `users/${uid}/${sub}`
+export { APP_KEY }
+const userScope = userSubcollectionPath
 
 const subCol = (uid, sub) => collection(db, userScope(uid, sub))
 

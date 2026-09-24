@@ -6,8 +6,9 @@ import {
   signOut,
   sendPasswordResetEmail,
 } from 'firebase/auth'
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
-import { auth, db, isFirebaseConfigured } from '../firebase/config'
+import { getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
+import { auth, isFirebaseConfigured } from '../firebase/config'
+import { userRootDocument } from '../firebase/paths'
 
 const AuthContext = createContext(null)
 
@@ -49,7 +50,7 @@ export function AuthContextProvider({ children }) {
       if (user) {
         await ensureUserDoc(user)
         try {
-          const snap = await getDoc(doc(db, 'users', user.uid))
+          const snap = await getDoc(userRootDocument(user.uid))
           setProfile(snap.exists() ? snap.data() : { email: user.email, role: 'teacher' })
         } catch {
           setProfile({ email: user.email, role: 'teacher' })
@@ -63,7 +64,7 @@ export function AuthContextProvider({ children }) {
   }, [isDemoMode])
 
   async function ensureUserDoc(user) {
-    const ref = doc(db, 'users', user.uid)
+    const ref = userRootDocument(user.uid)
     const snap = await getDoc(ref)
     if (!snap.exists()) {
       await setDoc(ref, {
