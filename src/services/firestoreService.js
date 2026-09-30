@@ -17,13 +17,14 @@ import { db } from '../firebase/config'
 
 // ----------------------------------------------------------------------------
 // Multi-user data isolation:
-//   users/{uid}/settings/{docId}
-//   users/{uid}/students/{docId}
-//   users/{uid}/absentees/{docId}
-//   users/{uid}/backups/{docId}
+//   apps/attendanceWaSender/users/{uid}/settings/{docId}
+//   apps/attendanceWaSender/users/{uid}/students/{docId}
+//   apps/attendanceWaSender/users/{uid}/absentees/{docId}
+//   apps/attendanceWaSender/users/{uid}/backups/{docId}
 // ----------------------------------------------------------------------------
 
-const userScope = (uid, sub) => `users/${uid}/${sub}`
+const APP_KEY = 'attendanceWaSender'
+const userScope = (uid, sub) => `apps/${APP_KEY}/users/${uid}/${sub}`
 
 const subCol = (uid, sub) => collection(db, userScope(uid, sub))
 

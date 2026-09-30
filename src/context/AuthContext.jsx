@@ -8,6 +8,7 @@ import {
 } from 'firebase/auth'
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { auth, db, isFirebaseConfigured } from '../firebase/config'
+import { requireAppAccess } from '../services/access'
 
 const AuthContext = createContext(null)
 
@@ -45,16 +46,27 @@ export function AuthContextProvider({ children }) {
   useEffect(() => {
     if (isDemoMode || !auth) return
     const unsub = onAuthStateChanged(auth, async (user) => {
-      setCurrentUser(user)
       if (user) {
+        try {
+          await requireAppAccess(user)
+        } catch (error) {
+          console.error('[Attendance WA Auth] Access denied', error)
+          setCurrentUser(null)
+          setProfile(null)
+          await signOut(auth)
+          setLoading(false)
+          return
+        }
+        setCurrentUser(user)
         await ensureUserDoc(user)
         try {
-          const snap = await getDoc(doc(db, 'users', user.uid))
+          const snap = await getDoc(doc(db, 'apps', 'attendanceWaSender', 'users', user.uid))
           setProfile(snap.exists() ? snap.data() : { email: user.email, role: 'teacher' })
         } catch {
           setProfile({ email: user.email, role: 'teacher' })
         }
       } else {
+        setCurrentUser(null)
         setProfile(null)
       }
       setLoading(false)
@@ -63,7 +75,7 @@ export function AuthContextProvider({ children }) {
   }, [isDemoMode])
 
   async function ensureUserDoc(user) {
-    const ref = doc(db, 'users', user.uid)
+    const ref = doc(db, 'apps', 'attendanceWaSender', 'users', user.uid)
     const snap = await getDoc(ref)
     if (!snap.exists()) {
       await setDoc(ref, {
@@ -90,7 +102,14 @@ export function AuthContextProvider({ children }) {
       setProfile({ email: cleanEmail, role: 'teacher' })
       return demoUser
     }
-    return signInWithEmailAndPassword(auth, email, password)
+    const credential = await signInWithEmailAndPassword(auth, email, password)
+    try {
+      await requireAppAccess(credential.user)
+      return credential
+    } catch (error) {
+      await signOut(auth)
+      throw error
+    }
   }
 
   async function signup(email, password) {
@@ -98,8 +117,14 @@ export function AuthContextProvider({ children }) {
       return login(email, password)
     }
     const cred = await createUserWithEmailAndPassword(auth, email, password)
-    await ensureUserDoc(cred.user)
-    return cred
+    try {
+      await requireAppAccess(cred.user)
+      await ensureUserDoc(cred.user)
+      return cred
+    } catch (error) {
+      await signOut(auth)
+      throw error
+    }
   }
 
   function logout() {
